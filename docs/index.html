@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vector DB Benchmarking Suite</title>
+<meta name="description" content="Rigorous, reproducible benchmarks comparing Pinecone, Weaviate, Qdrant, pgvector and FAISS across recall, latency, throughput and cost.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<noscript><style>.reveal{opacity:1 !important;transform:none !important;}</style></noscript>
+<style>
+:root{
+  --color-primary:#1E293B;
+  --color-on-primary:#FFFFFF;
+  --color-secondary:#334155;
+  --color-accent:#22C55E;
+  --color-accent-2:#38BDF8;
+  --color-accent-3:#A78BFA;
+  --color-background:#0F172A;
+  --color-background-2:#0B1222;
+  --color-foreground:#F8FAFC;
+  --color-muted:#94A3B8;
+  --color-surface:rgba(255,255,255,0.04);
+  --color-surface-strong:rgba(255,255,255,0.07);
+  --color-border:rgba(148,163,184,0.18);
+  --color-destructive:#EF4444;
+  --radius-md:14px;
+  --radius-lg:20px;
+  --space-1:4px;--space-2:8px;--space-3:16px;--space-4:24px;--space-5:32px;--space-6:48px;--space-7:64px;--space-8:96px;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto;}
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--color-background);
+  color:var(--color-foreground);
+  line-height:1.6;
+  font-size:16px;
+  min-height:100dvh;
+  overflow-x:hidden;
+}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+a{color:inherit;text-decoration:none;}
+img{max-width:100%;display:block;}
+.container{max-width:1180px;margin:0 auto;padding:0 var(--space-4);}
+@media (max-width:640px){.container{padding:0 var(--space-3);}}
+
+/* ---------- Background field ---------- */
+.bg-field{
+  position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(900px 600px at 18% 8%, rgba(34,197,94,0.16), transparent 60%),
+    radial-gradient(900px 700px at 85% 18%, rgba(56,189,248,0.14), transparent 60%),
+    radial-gradient(800px 800px at 50% 100%, rgba(167,139,250,0.10), transparent 60%),
+    var(--color-background);
+}
+.bg-grid{
+  position:fixed;inset:0;z-index:-1;opacity:.35;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(148,163,184,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,.07) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+#particles{position:fixed;inset:0;z-index:-1;pointer-events:none;}
+
+/* ---------- Nav ---------- */
+.nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(15,23,42,0.55);
+  backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  border-bottom:1px solid var(--color-border);
+}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 0;}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:.2px;}
+.brand-mark{
+  width:30px;height:30px;border-radius:9px;flex:none;
+  background:conic-gradient(from 180deg, var(--color-accent-2), var(--color-accent-3), var(--color-accent), var(--color-accent-2));
+  display:grid;place-items:center;
+  box-shadow:0 0 22px rgba(56,189,248,.45);
+}
+.brand-mark svg{width:16px;height:16px;}
+.nav-links{display:flex;gap:var(--space-5);align-items:center;}
+.nav-links a{font-size:14px;color:var(--color-muted);transition:color .2s var(--ease-out);cursor:pointer;}
+.nav-links a:hover,.nav-links a:focus-visible{color:var(--color-foreground);}
+.nav-links a:focus-visible{outline:2px solid var(--color-accent-2);outline-offset:4px;border-radius:4px;}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;
+  cursor:pointer;border:1px solid transparent;transition:transform .2s var(--ease-out),box-shadow .2s var(--ease-out),background .2s var(--ease-out);
+  min-height:44px;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:linear-gradient(135deg,var(--color-accent),#16a34a);color:#06210f;box-shadow:0 8px 30px rgba(34,197,94,.28);}
+.btn-primary:hover{box-shadow:0 10px 36px rgba(34,197,94,.42);transform:translateY(-1px);}
+.btn-ghost{background:var(--color-surface);border-color:var(--color-border);color:var(--color-foreground);}
+.btn-ghost:hover{background:var(--color-surface-strong);}
+.btn:focus-visible{outline:2px solid var(--color-accent-2);outline-offset:3px;}
+.nav-cta{display:flex;gap:10px;}
+.nav-toggle{display:none;}
+
+/* ---------- Hero ---------- */
+.hero{position:relative;padding:var(--space-8) 0 var(--space-7);text-align:center;}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:600;color:var(--color-accent-2);
+  background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);
+  padding:6px 14px;border-radius:999px;margin-bottom:var(--space-4);
+  animation:fadeUp .6s var(--ease-out) both;
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--color-accent);box-shadow:0 0 8px var(--color-accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+h1.hero-title{
+  font-size:clamp(2.2rem,5.4vw,4.4rem);
+  font-weight:800;letter-spacing:-0.03em;line-height:1.06;
+  background:linear-gradient(180deg,#fff 10%, #cbd5e1 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:fadeUp .7s .05s var(--ease-out) both;
+}
+.hero-title .grad{
+  background:linear-gradient(135deg,var(--color-accent-2),var(--color-accent),var(--color-accent-3));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-sub{
+  max-width:680px;margin:var(--space-4) auto 0;color:var(--color-muted);
+  font-size:clamp(1rem,1.6vw,1.15rem);
+  animation:fadeUp .7s .12s var(--ease-out) both;
+}
+.hero-actions{display:flex;gap:var(--space-3);justify-content:center;margin-top:var(--space-5);flex-wrap:wrap;animation:fadeUp .7s .18s var(--ease-out) both;}
+.hero-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3);
+  max-width:880px;margin:var(--space-7) auto 0;
+  animation:fadeUp .8s .24s var(--ease-out) both;
+}
+@media (max-width:768px){.hero-stats{grid-template-columns:repeat(2,1fr);}}
+.stat{
+  background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);
+  padding:var(--space-4) var(--space-3);backdrop-filter:blur(10px);
+}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:700;color:var(--color-foreground);}
+.stat-label{font-size:12.5px;color:var(--color-muted);margin-top:4px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---------- Section shell ---------- */
+section{padding:var(--space-7) 0;position:relative;}
+.section-head{max-width:680px;margin:0 auto var(--space-6);text-align:center;}
+.kicker{font-size:12.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-2);margin-bottom:var(--space-2);}
+h2{font-size:clamp(1.7rem,3vw,2.4rem);font-weight:700;letter-spacing:-0.02em;}
+.section-sub{color:var(--color-muted);margin-top:var(--space-2);font-size:1rem;}
+
+/* ---------- Glass card base ---------- */
+.glass{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);
+  backdrop-filter:blur(14px) saturate(130%);
+  -webkit-backdrop-filter:blur(14px) saturate(130%);
+}
+
+/* ---------- Metrics grid ---------- */
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-4);}
+@media (max-width:900px){.metrics-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:520px){.metrics-grid{grid-template-columns:1fr;}}
+.metric-card{
+  padding:var(--space-4);transition:transform .25s var(--ease-out),border-color .25s var(--ease-out),box-shadow .25s var(--ease-out);
+}
+.metric-card:hover{transform:translateY(-4px);border-color:rgba(56,189,248,.4);box-shadow:0 16px 40px rgba(0,0,0,.35);}
+.metric-icon{
+  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:var(--space-3);
+  background:linear-gradient(135deg,rgba(56,189,248,.18),rgba(34,197,94,.12));
+  border:1px solid var(--color-border);
+}
+.metric-icon svg{width:20px;height:20px;color:var(--color-accent-2);}
+.metric-card h3{font-size:1rem;font-weight:600;margin-bottom:6px;}
+.metric-card p{color:var(--color-muted);font-size:14px;}
+
+/* ---------- Comparison table ---------- */
+.table-wrap{overflow-x:auto;border-radius:var(--radius-lg);}
+table{width:100%;border-collapse:collapse;min-width:760px;}
+thead th{
+  text-align:left;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--color-muted);padding:14px 18px;border-bottom:1px solid var(--color-border);
+  position:sticky;top:0;background:rgba(15,23,42,.9);
+}
+tbody td{padding:16px 18px;border-bottom:1px solid var(--color-border);font-size:14.5px;}
+tbody tr{transition:background .2s var(--ease-out);}
+tbody tr:hover{background:rgba(255,255,255,.035);}
+tbody tr:last-child td{border-bottom:none;}
+.db-name{font-weight:600;display:flex;align-items:center;gap:10px;}
+.db-dot{width:9px;height:9px;border-radius:50%;flex:none;}
+td.num{font-family:'JetBrains Mono',monospace;}
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;
+  background:rgba(34,197,94,.12);color:var(--color-accent);border:1px solid rgba(34,197,94,.3);
+}
+
+/* ---------- Architecture diagram ---------- */
+.arch{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);
+}
+@media (max-width:760px){.arch{grid-template-columns:1fr;}}
+.arch-node{
+  padding:var(--space-4);position:relative;
+}
+.arch-node h3{font-size:14px;font-weight:700;margin-bottom:8px;color:var(--color-accent-2);}
+.arch-node ul{list-style:none;}
+.arch-node li{
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--color-muted);
+  padding:6px 0;border-top:1px dashed var(--color-border);
+}
+.arch-node li:first-child{border-top:none;}
+.arch-flow{
+  display:flex;align-items:center;justify-content:center;gap:8px;color:var(--color-muted);
+  font-size:12px;margin:var(--space-3) 0;
+}
+.arch-flow svg{width:18px;height:18px;color:var(--color-accent);}
+
+/* ---------- Findings ---------- */
+.findings{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);}
+@media (max-width:760px){.findings{grid-template-columns:1fr;}}
+.finding{padding:var(--space-4);display:flex;gap:14px;align-items:flex-start;}
+.finding .n{
+  font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--color-background);
+  background:linear-gradient(135deg,var(--color-accent-2),var(--color-accent));
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;font-size:13px;
+}
+.finding p{font-size:14.5px;color:#cbd5e1;}
+.finding strong{color:var(--color-foreground);}
+
+/* ---------- CTA ---------- */
+.cta{
+  text-align:center;padding:var(--space-7) var(--space-4);border-radius:24px;
+  background:linear-gradient(135deg, rgba(34,197,94,.10), rgba(56,189,248,.08));
+  border:1px solid var(--color-border);position:relative;overflow:hidden;
+}
+.cta::before{
+  content:"";position:absolute;inset:-40% -10%;
+  background:radial-gradient(circle, rgba(56,189,248,.18), transparent 60%);
+  animation:spin 16s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.cta h2{position:relative;}
+.cta p{position:relative;color:var(--color-muted);max-width:520px;margin:var(--space-2) auto var(--space-4);}
+.cta .hero-actions{position:relative;}
+
+/* ---------- Footer ---------- */
+footer{border-top:1px solid var(--color-border);padding:var(--space-6) 0;color:var(--color-muted);font-size:13.5px;}
+.footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-3);}
+footer a{color:var(--color-muted);transition:color .2s;}
+footer a:hover{color:var(--color-foreground);}
+
+/* ---------- reveal on scroll ---------- */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s var(--ease-out),transform .6s var(--ease-out);}
+.reveal.in{opacity:1;transform:translateY(0);}
+
+@media (max-width:760px){
+  .nav-links{position:fixed;inset:60px 16px auto 16px;flex-direction:column;align-items:flex-start;gap:0;
+    background:rgba(15,23,42,.97);border:1px solid var(--color-border);border-radius:16px;padding:8px;
+    transform-origin:top;transform:scaleY(0);opacity:0;pointer-events:none;transition:transform .25s var(--ease-out),opacity .25s;}
+  .nav-links.open{transform:scaleY(1);opacity:1;pointer-events:auto;}
+  .nav-links a{padding:12px 10px;width:100%;border-radius:10px;}
+  .nav-links a:hover{background:var(--color-surface);}
+  .nav-cta{display:none;}
+  .nav-toggle{display:inline-flex;background:none;border:1px solid var(--color-border);color:var(--color-foreground);
+    width:44px;height:44px;border-radius:10px;align-items:center;justify-content:center;cursor:pointer;}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-field"></div>
+<div class="bg-grid"></div>
+<canvas id="particles"></canvas>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#top" class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#06210f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+      </span>
+      Vector DB Benchmarking Suite
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <div class="nav-links" id="navLinks">
+      <a href="#metrics">Metrics</a>
+      <a href="#results">Results</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#findings">Findings</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="https://github.com/jthiruveedula/vector-db-benchmarking-suite" target="_blank" rel="noopener">Star on GitHub</a>
+      <a class="btn btn-primary" href="#results">View Results</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <header class="hero container">
+    <span class="eyebrow"><span class="dot"></span> Reproducible · Workload-specific · Open source</span>
+    <h1 class="hero-title">Pick the right vector database<br><span class="grad">with evidence, not vendor decks.</span></h1>
+    <p class="hero-sub">A rigorous benchmarking framework comparing Pinecone, Weaviate, Qdrant, pgvector and FAISS across recall@k, latency percentiles, throughput, index build time, and cost-per-query.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/jthiruveedula/vector-db-benchmarking-suite" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.49c-2.22.48-2.69-1.07-2.69-1.07-.36-.92-.89-1.16-.89-1.16-.72-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        View on GitHub
+      </a>
+      <a class="btn btn-ghost" href="#results">See benchmark data</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-value">5</div><div class="stat-label">Databases compared</div></div>
+      <div class="stat"><div class="stat-value">8</div><div class="stat-label">Benchmark dimensions</div></div>
+      <div class="stat"><div class="stat-value">1M+</div><div class="stat-label">Vectors per run</div></div>
+      <div class="stat"><div class="stat-value">P50/95/99</div><div class="stat-label">Latency percentiles</div></div>
+    </div>
+  </header>
+
+  <section id="metrics">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">What we measure</div>
+        <h2>Eight dimensions, one apples-to-apples harness</h2>
+        <p class="section-sub">Every database runs the same workload generator, the same query set, and the same ground truth — so the numbers are comparable.</p>
+      </div>
+      <div class="metrics-grid">
+        <div class="glass metric-card reveal">
+          <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg></div>
+          <h3>Recall@k</h3>
+          <p>Recall@1, Recall@10, NDCG@10 and MRR@10 against brute-force ground truth.</p>
+        </div>
+        <div class="glass metric-card reveal">
+          <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <h3>Latency</h3>
+          <p>P50 / P95 / P99 query latency in milliseconds under realistic concurrency.</p>
+        </div>
+        <div class="glass metric-card reveal">
+          <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"/><path d="M21 7v6h-6"/></svg></div>
+          <h3>Throughput</h3>
+          <p>Queries per second at varying concurrency levels, from 1 to 64 workers.</p>
+        </div>
+        <div class="glass metric-card reveal">
+          <div class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M5 5l14 14M19 5L5 19"/></svg></div>
+          <h3>Cost per query</h3>
+          <p>Normalized $ per million queries across managed and self-hosted deployments.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">Benchmark results</div>
+        <h2>1M vectors · 1536-dim · cosine similarity</h2>
+        <p class="section-sub">Illustrative run from the suite's reference report. Re-run locally with <code class="mono">python -m vectordb_bench</code> to reproduce against your own workload.</p>
+      </div>
+      <div class="glass table-wrap reveal">
+        <table>
+          <thead>
+            <tr><th>Database</th><th>Recall@10</th><th>P95 Latency</th><th>QPS (c=10)</th><th>Index Time</th><th>Cost / M queries</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="db-name"><span class="db-dot" style="background:#22C55E"></span>Pinecone (pod-s1)</td>
+              <td class="num">0.98</td><td class="num">18ms</td><td class="num">850</td><td class="num">N/A</td><td class="num">$0.40</td>
+            </tr>
+            <tr>
+              <td class="db-name"><span class="db-dot" style="background:#38BDF8"></span>Weaviate (HNSW)</td>
+              <td class="num">0.97</td><td class="num">22ms</td><td class="num">780</td><td class="num">8.2 min</td><td class="num">~$0.05</td>
+            </tr>
+            <tr>
+              <td class="db-name"><span class="db-dot" style="background:#A78BFA"></span>Qdrant (HNSW) <span class="badge">Best balance</span></td>
+              <td class="num">0.98</td><td class="num">19ms</td><td class="num">920</td><td class="num">6.5 min</td><td class="num">~$0.04</td>
+            </tr>
+            <tr>
+              <td class="db-name"><span class="db-dot" style="background:#F59E0B"></span>pgvector (HNSW)</td>
+              <td class="num">0.94</td><td class="num">45ms</td><td class="num">320</td><td class="num">12.1 min</td><td class="num">~$0.03</td>
+            </tr>
+            <tr>
+              <td class="db-name"><span class="db-dot" style="background:#F87171"></span>FAISS (IVF-PQ)</td>
+              <td class="num">0.91</td><td class="num">8ms</td><td class="num">3200</td><td class="num">4.1 min</td><td class="num">Free</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">How it's built</div>
+        <h2>One harness, five pluggable adapters</h2>
+        <p class="section-sub">Each database implements the same <code class="mono">VectorDBAdapter</code> protocol, so the benchmarker runs identical workloads against all of them.</p>
+      </div>
+      <div class="arch reveal">
+        <div class="glass arch-node">
+          <h3>datasets/</h3>
+          <ul>
+            <li>dataset_loader.py</li>
+            <li>wikipedia_embeddings.py</li>
+            <li>synthetic_generator.py</li>
+          </ul>
+        </div>
+        <div class="glass arch-node">
+          <h3>connectors/</h3>
+          <ul>
+            <li>pinecone_connector.py</li>
+            <li>weaviate_connector.py</li>
+            <li>qdrant_connector.py</li>
+            <li>pgvector_connector.py</li>
+            <li>faiss_connector.py</li>
+          </ul>
+        </div>
+        <div class="glass arch-node">
+          <h3>benchmarks/</h3>
+          <ul>
+            <li>recall_benchmark.py</li>
+            <li>latency_benchmark.py</li>
+            <li>throughput_benchmark.py</li>
+            <li>filter_benchmark.py</li>
+            <li>scalability_benchmark.py</li>
+          </ul>
+        </div>
+      </div>
+      <div class="arch-flow reveal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        results aggregated in analysis/ → visualized in notebooks/
+      </div>
+    </div>
+  </section>
+
+  <section id="findings">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">Key findings</div>
+        <h2>What the data actually says</h2>
+      </div>
+      <div class="findings">
+        <div class="glass finding reveal">
+          <div class="n">1</div>
+          <p><strong>Qdrant</strong> offers the best recall-to-latency tradeoff for self-hosted deployments.</p>
+        </div>
+        <div class="glass finding reveal">
+          <div class="n">2</div>
+          <p><strong>pgvector</strong> is compelling for teams already on Postgres but falls short past ~10M vectors.</p>
+        </div>
+        <div class="glass finding reveal">
+          <div class="n">3</div>
+          <p><strong>FAISS</strong> is unmatched for pure in-memory throughput but lacks persistence and filtering.</p>
+        </div>
+        <div class="glass finding reveal">
+          <div class="n">4</div>
+          <p><strong>Pinecone serverless</strong> gives near-zero ops overhead at ~10x the cost of self-hosted options.</p>
+        </div>
+        <div class="glass finding reveal">
+          <div class="n">5</div>
+          <p>Hybrid search (BM25 + dense) in <strong>Weaviate</strong> lifts recall@10 by 8-12% on keyword-heavy queries.</p>
+        </div>
+        <div class="glass finding reveal">
+          <div class="n">6</div>
+          <p>Highly selective metadata filters degrade most ANN indexes severely — payload-indexed filtering wins.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="cta reveal">
+        <h2>Run it on your own workload</h2>
+        <p>Clone the suite, drop in your embeddings, and get a reproducible leaderboard in minutes.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="https://github.com/jthiruveedula/vector-db-benchmarking-suite" target="_blank" rel="noopener">Get started on GitHub</a>
+          <a class="btn btn-ghost" href="#metrics">Explore the metrics</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container footer-inner">
+    <span>© 2026 Vector DB Benchmarking Suite · MIT License</span>
+    <span><a href="https://github.com/jthiruveedula/vector-db-benchmarking-suite" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var toggle = document.getElementById('navToggle');
+  var links = document.getElementById('navLinks');
+  if(toggle){
+    toggle.addEventListener('click', function(){
+      var open = links.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    links.querySelectorAll('a').forEach(function(a){
+      a.addEventListener('click', function(){ links.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); });
+    });
+  }
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var revealEls = document.querySelectorAll('.reveal');
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {threshold:0.15});
+    revealEls.forEach(function(el){ io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add('in'); });
+  }
+  // safety net: guarantee visibility even if the observer stalls (slow devices, frozen tabs)
+  setTimeout(function(){ revealEls.forEach(function(el){ el.classList.add('in'); }); }, 4000);
+
+  if(reduceMotion) return;
+
+  var canvas = document.getElementById('particles');
+  var ctx = canvas.getContext('2d');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var W, H, particles = [];
+  var COLORS = ['56,189,248','34,197,94','167,139,250'];
+
+  function resize(){
+    W = canvas.width = window.innerWidth * dpr;
+    H = canvas.height = Math.min(window.innerHeight, 900) * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = Math.min(window.innerHeight, 900) + 'px';
+  }
+  function init(){
+    var count = Math.min(60, Math.floor(window.innerWidth / 22));
+    particles = [];
+    for(var i=0;i<count;i++){
+      particles.push({
+        x: Math.random()*W, y: Math.random()*H,
+        vx:(Math.random()-0.5)*0.25*dpr, vy:(Math.random()-0.5)*0.25*dpr,
+        r: (Math.random()*1.6+0.6)*dpr,
+        c: COLORS[i % COLORS.length]
+      });
+    }
+  }
+  function tick(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<particles.length;i++){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba('+p.c+',0.55)';
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+    }
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('resize', function(){ resize(); init(); });
+  resize(); init(); tick();
+})();
+</script>
+</body>
+</html>
