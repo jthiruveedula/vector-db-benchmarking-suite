@@ -4,6 +4,8 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue) ![Benchmarking](https://img.shields.io/badge/Type-Benchmarking-orange) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+**[Live site →](https://jthiruveedula.github.io/vector-db-benchmarking-suite/)**
+
 ---
 
 ## Motivation
@@ -51,37 +53,53 @@ Choosing a vector database is one of the most consequential decisions in a RAG s
 
 ---
 
+## Quickstart
+
+```bash
+pip install -e .                 # core install (numpy only)
+pip install -e ".[faiss]"        # + FAISS, for the demo below
+python -m vectordb_bench         # runs a synthetic FAISS benchmark end-to-end, no external services
+```
+
+Install other connectors as needed via extras: `pip install -e ".[pinecone,weaviate,qdrant,pgvector,bigquery]"`,
+or `pip install -e ".[all]"` for everything, or `pip install -e ".[viz]"` for chart generation.
+
+---
+
 ## Project Structure
 
 ```
 vector-db-benchmarking-suite/
-|-- datasets/
-|   |-- dataset_loader.py       # Download and prepare benchmark datasets
-|   |-- wikipedia_embeddings.py # 1M Wikipedia passage embeddings
-|   `-- synthetic_generator.py  # Synthetic vector dataset generator
-|-- connectors/
-|   |-- pinecone_connector.py   # Pinecone Python SDK wrapper
-|   |-- weaviate_connector.py   # Weaviate client wrapper
-|   |-- qdrant_connector.py     # Qdrant client wrapper
-|   |-- pgvector_connector.py   # PostgreSQL + pgvector wrapper
-|   `-- faiss_connector.py      # FAISS in-memory wrapper
-|-- benchmarks/
-|   |-- recall_benchmark.py     # Recall@k evaluation
-|   |-- latency_benchmark.py    # P50/P95/P99 latency measurement
-|   |-- throughput_benchmark.py # QPS under concurrent load
-|   |-- filter_benchmark.py     # Filtered search performance
-|   `-- scalability_benchmark.py # Performance at varying dataset sizes
-|-- infra/
-|   |-- docker-compose.yml      # Weaviate + Qdrant + PostgreSQL local
-|   `-- terraform/              # Cloud VM provisioning for managed DBs
-|-- analysis/
-|   |-- results_aggregator.py   # Combine benchmark results
-|   `-- visualizer.py           # Matplotlib/plotly charts
-|-- notebooks/
-|   |-- 01_benchmark_results.ipynb  # Full results analysis
-|   `-- 02_cost_analysis.ipynb      # TCO comparison
+|-- vectordb_bench/
+|   |-- benchmark.py            # VectorDBBenchmarker orchestrator, BenchmarkConfig/BenchmarkResult
+|   |-- cli.py                  # `python -m vectordb_bench` demo entrypoint (FAISS-only, zero external deps)
+|   |-- datasets/
+|   |   |-- dataset_loader.py       # Load cached datasets from disk, generating if missing
+|   |   `-- synthetic_generator.py  # Synthetic vector + brute-force kNN ground-truth generator
+|   |-- connectors/
+|   |   |-- pinecone_connector.py   # Pinecone Python SDK wrapper
+|   |   |-- weaviate_connector.py   # Weaviate client wrapper
+|   |   |-- qdrant_connector.py     # Qdrant client wrapper
+|   |   |-- pgvector_connector.py   # PostgreSQL + pgvector wrapper
+|   |   |-- faiss_connector.py      # FAISS in-memory wrapper
+|   |   `-- bigquery_connector.py   # BigQuery VECTOR_SEARCH wrapper (not in the 5-way comparison table above)
+|   |-- benchmarks/
+|   |   |-- recall_benchmark.py     # Recall@k evaluation against ground truth
+|   |   |-- latency_benchmark.py    # P50/P95/P99 latency measurement
+|   |   `-- throughput_benchmark.py # QPS at varying concurrency levels
+|   `-- analysis/
+|       |-- results_aggregator.py   # Combine JSON result files into a summary
+|       `-- visualizer.py           # Matplotlib bar/line charts (optional `viz` extra)
+|-- tests/                      # pytest suite (no external services required)
+|-- pyproject.toml
 `-- README.md
 ```
+
+> Note: all connectors implement the same `VectorDBAdapter` protocol (`insert_batch`, `query`, `count`,
+> `cost_per_1k_queries`) defined in `vectordb_bench/benchmark.py`, and lazily import their client library so
+> the package imports fine even when most of those libraries aren't installed. `infra/`, `notebooks/`, and
+> filter/scalability benchmarks described in earlier drafts of this README are aspirational/future work and
+> not yet implemented.
 
 ---
 
